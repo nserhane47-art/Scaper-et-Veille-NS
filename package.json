@@ -1,0 +1,17 @@
+{
+  "name": "outil-veille-scraping",
+  "version": "1.0.0",
+  "description": "Outil de collecte de données de veille commerciale pour étudiants",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/run.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
+}

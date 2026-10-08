@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collecteur de veille</title>
+<style>
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#1d2330; --muted:#5d6577; --line:#e3e1db;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --soft:#e8f0f6; --warn:#8a5a00; --warn-bg:#fff6e0;
+  --err:#a12a2a; --err-bg:#fdecec; --ok:#1e6b44;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#14171d; --panel:#1c2028; --ink:#e7e9ee; --muted:#9aa3b5; --line:#2c3240;
+    --accent:#6fb0dc; --accent-ink:#0f1720; --soft:#1f2b37; --warn:#f0c46a; --warn-bg:#2d2616;
+    --err:#f19a9a; --err-bg:#2d1a1a; --ok:#7fd1a4; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 48px}
+header h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin-top:20px}
+label{display:block;font-weight:600;margin:0 0 6px}
+.row{display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:16px}
+@media (max-width:720px){.row{grid-template-columns:1fr}}
+select,input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.help{background:var(--soft);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:14px}
+.help b{display:block;margin-bottom:2px}
+.actions{display:flex;gap:12px;align-items:end;margin-top:16px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;padding:11px 22px}
+button:disabled{opacity:.55;cursor:wait}
+.msg{margin-top:16px;padding:12px 14px;border-radius:8px}
+.msg.err{background:var(--err-bg);color:var(--err)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.result-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.result-head h2{margin:0;font-size:20px}
+.meta{color:var(--muted);font-size:13px;word-break:break-all}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:14px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.stat .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.stat .v{font-size:17px;font-weight:600;margin-top:2px;word-break:break-word}
+.stat.wide{grid-column:1/-1}
+.stat.wide .v{font-size:15px;font-weight:500}
+ul.notes{margin:14px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+.tbl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 8px}
+.tbl-head h3{margin:0;font-size:16px}
+.tbl-tools{display:flex;gap:8px;flex-wrap:wrap}
+.tbl-tools input{width:200px;padding:7px 10px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--soft);position:sticky;top:0;cursor:pointer;white-space:nowrap;user-select:none}
+th .arr{color:var(--muted);font-size:11px;margin-left:4px}
+td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+td.long{min-width:320px}
+td a{color:var(--accent)}
+tr:last-child td{border-bottom:none}
+.good{color:var(--ok);font-weight:600}
+footer{margin-top:28px;color:var(--muted);font-size:13px}
+footer b{color:var(--ink)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Collecteur de veille</h1>
+    <p>Relevez automatiquement l'offre, les prix, les promotions et les avis clients d'un concurrent, puis exportez le tableau dans Excel.</p>
+  </header>
+
+  <section class="panel">
+    <div id="codeBox" class="hidden" style="margin-bottom:16px;max-width:320px">
+      <label for="code">Code de classe</label>
+      <input id="code" autocomplete="off" placeholder="Donné par votre formateur">
+    </div>
+    <div class="row">
+      <div>
+        <label for="type">Que voulez-vous observer ?</label>
+        <select id="type">
+          <option value="offre">Offre d'un concurrent (rayon, catalogue)</option>
+          <option value="produit">Fiche produit</option>
+          <option value="promos">Promotions et opérations commerciales</option>
+          <option value="avis-site">Avis clients d'un site marchand</option>
+          <option value="avis-google">Avis clients Google</option>
+          <option value="contenu">Contenu d'un site, actualités</option>
+        </select>
+      </div>
+      <div>
+        <label for="url" id="urlLabel">Adresse de la page</label>
+        <input id="url" autocomplete="off">
+      </div>
+    </div>
+    <div class="help" id="help"></div>
+    <div class="actions">
+      <button class="primary" id="go">Lancer la collecte</button>
+    </div>
+    <div id="msg"></div>
+  </section>
+
+  <section class="panel hidden" id="results"></section>
+
+  <footer>
+    <b>Bonnes pratiques.</b> Collectez peu et seulement ce qui sert votre analyse. L'outil respecte le fichier robots.txt des sites et réduit les noms des auteurs d'avis à leurs initiales.
+    Citez toujours la source et la date du relevé dans vos travaux : un prix ou un avis n'est valable qu'au moment où il est observé.
+  </footer>
+</div>
+
+<script>
+const TYPES = {
+  "offre": {
+    label: "Adresse de la page du rayon ou de la catégorie",
+    ph: "https://www.exemple.fr/rayon/cafe",
+    help: "<b>À quoi ça sert</b>Relever la largeur de gamme et le positionnement prix d'un concurrent : nombre de références, prix moyen, mini et maxi, part des produits en promotion. Collez l'adresse d'une page qui affiche une liste de produits."
+  },
+  "produit": {
+    label: "Adresse de la fiche produit",
+    ph: "https://www.exemple.fr/produit/reference",
+    help: "<b>À quoi ça sert</b>Comparer un même produit d'une enseigne à l'autre : prix, prix barré, disponibilité, note et nombre d'avis. Répétez la collecte sur chaque concurrent puis rassemblez les lignes dans un seul tableau."
+  },
+  "promos": {
+    label: "Adresse de la page promotions ou d'un rayon",
+    ph: "https://www.exemple.fr/promotions",
+    help: "<b>À quoi ça sert</b>Repérer la politique promotionnelle d'un concurrent : produits remisés, taux de remise, bandeaux, codes promo, livraison offerte. Utilisez de préférence la page « Promotions », « Soldes » ou « Bons plans »."
+  },
+  "avis-site": {
+    label: "Adresse de la fiche produit (ou de la page d'avis)",
+    ph: "https://www.exemple.fr/produit/reference",
+    help: "<b>À quoi ça sert</b>Analyser ce que les clients disent d'un produit chez un concurrent : note, répartition des étoiles, points forts et motifs de plainte. Collez l'adresse d'une fiche produit qui affiche des avis."
+  },
+  "avis-google": {
+    label: "Nom de l'établissement et ville",
+    ph: "Boulangerie du Marché Villeneuve-sur-Lot",
+    help: "<b>À quoi ça sert</b>Observer l'image d'un point de vente physique : note Google, nombre d'avis, derniers commentaires. Tapez le nom du magasin suivi de sa ville, comme dans Google Maps."
+  },
+  "contenu": {
+    label: "Adresse du site ou de la page",
+    ph: "https://www.exemple.fr/actualites",
+    help: "<b>À quoi ça sert</b>Surveiller la communication d'un concurrent ou d'un média : titres mis en avant, derniers articles, existence d'un flux RSS. Utile pour la veille concurrentielle et la veille sectorielle."
+  }
+};
+
+const $ = (id) => document.getElementById(id);
+let config = { codeRequis: false, google: true };
+
+fetch("/api/scrape").then((r) => r.json()).then((c) => {
+  config = c;
+  if (c.codeRequis) $("codeBox").classList.remove("hidden");
+  if (!c.google) {
+    const o = document.querySelector('option[value="avis-google"]');
+    o.textContent += " (non activé)";
+    o.disabled = true;
+  }
+}).catch(() => {});
+
+function refreshForm() {
+  const t = TYPES[$("type").value];
+  $("urlLabel").textContent = t.label;
+  $("url").placeholder = t.ph;
+  $("help").innerHTML = t.help;
+}
+$("type").addEventListener("change", refreshForm);
+refreshForm();
+
+function showMsg(text, kind = "err") {
+  $("msg").innerHTML = text ? `<div class="msg ${kind}"></div>` : "";
+  if (text) $("msg").firstChild.textContent = text;
+}
+
+$("url").addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+$("go").addEventListener("click", run);
+
+async function run() {
+  const type = $("type").value;
+  const value = $("url").value.trim();
+  if (!value) return showMsg("Renseignez d'abord le champ « " + TYPES[type].label + " ».");
+  const body = { type, code: $("code").value };
+  if (type === "avis-google") body.query = value; else body.url = value;
+  showMsg("");
+  const btn = $("go");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Collecte en cours…';
+  try {
+    const res = await fetch("/api/scrape", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erreur || "Erreur");
+    render(data);
+  } catch (e) {
+    showMsg(e.message === "Failed to fetch" ? "Le serveur ne répond pas. Vérifiez votre connexion." : e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Lancer la collecte";
+  }
+}
+
+// ---------- Affichage ----------
+const fmt = {
+  euro: (v) => v == null ? "" : v.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €",
+  pct: (v) => v == null ? "" : "-" + v + " %",
+  num: (v) => v == null ? "" : v.toLocaleString("fr-FR"),
+  int: (v) => v == null ? "" : v.toLocaleString("fr-FR"),
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let current = null;
+
+function render(data) {
+  current = data;
+  const box = $("results");
+  box.classList.remove("hidden");
+  const date = new Date(data.date).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
+  let html = `<div class="result-head"><h2>${esc(data.titre)}</h2><div class="meta">Relevé du ${esc(date)} · Source : ${esc(data.source)}</div></div>`;
+  if (data.stats?.length) {
+    html += '<div class="stats">' + data.stats.map((s) =>
+      `<div class="stat${String(s.value).length > 36 ? " wide" : ""}"><div class="l">${esc(s.label)}</div><div class="v">${esc(s.value)}</div></div>`).join("") + "</div>";
+  }
+  if (data.notes?.length) html += '<ul class="notes">' + data.notes.map((n) => `<li>${esc(n)}</li>`).join("") + "</ul>";
+  data.tables.forEach((t, i) => {
+    html += `<div class="tbl-head"><h3>${esc(t.titre)} (${t.lignes.length})</h3>
+      <div class="tbl-tools"><input placeholder="Filtrer…" data-filter="${i}">
+      <button data-copy="${i}">Copier pour Excel</button><button data-csv="${i}">Télécharger (CSV)</button></div></div>
+      <div class="scroll"><table data-t="${i}"></table></div>`;
+  });
+  box.innerHTML = html;
+  data.tables.forEach((t, i) => { t._sort = null; t._filter = ""; drawTable(i); });
+  box.querySelectorAll("[data-filter]").forEach((inp) => inp.addEventListener("input", () => {
+    current.tables[inp.dataset.filter]._filter = inp.value.toLowerCase(); drawTable(+inp.dataset.filter);
+  }));
+  box.querySelectorAll("[data-csv]").forEach((b) => b.addEventListener("click", () => downloadCsv(+b.dataset.csv)));
+  box.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => copyTsv(+b.dataset.copy, b)));
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function visibleRows(t) {
+  let rows = t.lignes;
+  if (t._filter) rows = rows.filter((r) => t.colonnes.some((c) => String(r[c.key] ?? "").toLowerCase().includes(t._filter)));
+  if (t._sort) {
+    const { key, dir } = t._sort;
+    rows = [...rows].sort((a, b) => {
+      const x = a[key], y = b[key];
+      if (x == null || x === "") return 1;
+      if (y == null || y === "") return -1;
+      return (typeof x === "number" ? x - y : String(x).localeCompare(String(y), "fr")) * dir;
+    });
+  }
+  return rows;
+}
+
+function drawTable(i) {
+  const t = current.tables[i];
+  // on masque les colonnes entièrement vides
+  const cols = t.colonnes.filter((c) => t.lignes.some((r) => r[c.key] !== null && r[c.key] !== undefined && r[c.key] !== ""));
+  const el = document.querySelector(`table[data-t="${i}"]`);
+  const head = "<tr>" + cols.map((c) => {
+    const arr = t._sort?.key === c.key ? (t._sort.dir > 0 ? "▲" : "▼") : "";
+    return `<th data-k="${c.key}">${esc(c.label)}<span class="arr">${arr}</span></th>`;
+  }).join("") + "</tr>";
+  const body = visibleRows(t).map((r) => "<tr>" + cols.map((c) => {
+    const v = r[c.key];
+    if (c.type === "url") return v ? `<td><a href="${esc(v)}" target="_blank" rel="noopener">ouvrir</a></td>` : "<td></td>";
+    if (fmt[c.type]) return `<td class="n${c.type === "pct" && v ? " good" : ""}">${esc(fmt[c.type](v))}</td>`;
+    return `<td${c.type === "long" ? ' class="long"' : ""}>${esc(v)}</td>`;
+  }).join("") + "</tr>").join("");
+  el.innerHTML = `<thead>${head}</thead><tbody>${body}</tbody>`;
+  el.querySelectorAll("th").forEach((th) => th.addEventListener("click", () => {
+    const k = th.dataset.k;
+    t._sort = t._sort?.key === k ? { key: k, dir: -t._sort.dir } : { key: k, dir: 1 };
+    drawTable(i);
+  }));
+}
+
+// ---------- Export ----------
+function cellOut(c, v) {
+  if (v == null) return "";
+  if (typeof v === "number") return String(v).replace(".", ",");
+  return String(v);
+}
+function exportCols(t) {
+  return t.colonnes.filter((c) => t.lignes.some((r) => r[c.key] !== null && r[c.key] !== undefined && r[c.key] !== ""));
+}
+function downloadCsv(i) {
+  const t = current.tables[i];
+  const cols = exportCols(t);
+  const q = (s) => /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  const lines = [cols.map((c) => q(c.label)).join(";")]
+    .concat(visibleRows(t).map((r) => cols.map((c) => q(cellOut(c, r[c.key]))).join(";")));
+  lines.push("", q("Source : " + current.source) + ";" + q("Relevé du " + new Date(current.date).toLocaleString("fr-FR")));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (current.titre + " " + new Date(current.date).toISOString().slice(0, 10)).replace(/[^\wÀ-ÿ -]/g, "").replace(/\s+/g, "_") + ".csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function copyTsv(i, btn) {
+  const t = current.tables[i];
+  const cols = exportCols(t);
+  const clean = (s) => s.replace(/[\t\r\n]+/g, " ");
+  const txt = [cols.map((c) => c.label).join("\t")]
+    .concat(visibleRows(t).map((r) => cols.map((c) => clean(cellOut(c, r[c.key]))).join("\t"))).join("\n");
+  try {
+    await navigator.clipboard.writeText(txt);
+    btn.textContent = "Copié : collez dans Excel";
+  } catch {
+    btn.textContent = "Copie impossible";
+  }
+  setTimeout(() => (btn.textContent = "Copier pour Excel"), 2500);
+}
+</script>
+</body>
+</html>
