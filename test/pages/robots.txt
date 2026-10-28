@@ -1,3 +1,4 @@
 User-agent: *
 Disallow: /prive
 Allow: /prive/ok
+Disallow: /*filters=*

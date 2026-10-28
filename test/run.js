@@ -21,4 +21,6 @@ show("avis site", await runScrape({ type: "avis-site", url: B + "/avis.html" }))
 try { await runScrape({ type: "produit", url: B + "/prive/x.html" }); } catch (e) { console.log("\nrobots:", e.code, e.message.slice(0, 90)); }
 try { await runScrape({ type: "avis-google", query: "Boulangerie Agen" }); } catch (e) { console.log("google sans clé:", e.code); }
 try { await runScrape({ type: "produit", url: "pas une url" }); } catch (e) { console.log("url:", e.code); }
+const f = await runScrape({ type: "offre", url: B + "/liste.html?filters=marque:x" });
+console.log("\nfiltres:", f.tables[0].lignes.length, "produits |", f.notes[0].slice(0, 70));
 srv.close();
