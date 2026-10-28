@@ -23,4 +23,6 @@ try { await runScrape({ type: "avis-google", query: "Boulangerie Agen" }); } cat
 try { await runScrape({ type: "produit", url: "pas une url" }); } catch (e) { console.log("url:", e.code); }
 const f = await runScrape({ type: "offre", url: B + "/liste.html?filters=marque:x" });
 console.log("\nfiltres:", f.tables[0].lignes.length, "produits |", f.notes[0].slice(0, 70));
+const c = await runScrape({ type: "offre", url: B + "/casto.html" });
+console.log("casto:", c.tables[0].lignes.map((r) => `${r.prix}/${r.oldPrice}`).join(" "));
 srv.close();
